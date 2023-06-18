@@ -25,7 +25,7 @@ pub fn user_asked_for_pictures(question: &str) -> bool {
 }
 
 pub fn has_multiple_self_references(text: &str) -> bool {
-    let regex = Regex::new(r"\b(I|me|my|mine|me)\b").unwrap();
+    let regex = Regex::new(r"\b(i|me|my|mine|me)\b").unwrap();
     let mut count = 0;
 
     for word in text.split_whitespace() {

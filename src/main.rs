@@ -1,18 +1,14 @@
 mod config;
-use std::borrow::Borrow;
-
-use chrono::format;
-use config::get_ini_value;
-use teloxide::{prelude::*, types::InputFile};
-
-use crate::{
-    ai::chat::History, history::file::write_history_to_file,
-    message_parsers::is_question_about_appointment,
-};
 mod ai;
 mod history;
 mod message_parsers;
 mod modules;
+use teloxide::{prelude::*, types::InputFile};
+use crate::{
+    config::get_ini_value,
+    ai::chat::History, history::file::write_history_to_file,
+    message_parsers::is_question_about_appointment,
+};
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
