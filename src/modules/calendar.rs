@@ -50,7 +50,7 @@ fn get_appointments() -> Vec<Appointment> {
                         calendar: calendar.name().to_string(),
                         date,
                         summary: summary.clone(),
-                        repeat_rule: Some(parse_recurrence_rule(repeat)),
+                        repeat_rule: parse_recurring_event(&repeat),
                     });
                 }
             }
@@ -75,9 +75,11 @@ fn get_appointments_on_date(
     let mut day_appointments = vec![];
     for appointment in appointments {
         if is_appointment_on_date(&appointment, date) {
+            
             day_appointments.push(appointment)
         }
     }
+
     day_appointments
 }
 
@@ -112,6 +114,7 @@ fn parse_timestamp(timestamp: &str) -> DateTime<Utc> {
 }
 
 fn parse_recurrence_rule(repeat_rule_string: String) -> RecurringEvent {
+    log::info!("{}", repeat_rule_string);
     let mut event = RecurringEvent {
         frequency: Frequency::Yearly,
         until: None,
@@ -128,20 +131,40 @@ fn parse_recurrence_rule(repeat_rule_string: String) -> RecurringEvent {
         }
 
         let key = parts[0].trim();
-        let value = parts[1].trim();
-
+        let mut value = parts[1].trim();
+        let mut freq = "";
+        let mut until = "";
+        //cut value by ; if it exists
+        if value.contains(";") {
+            freq = value.split(";").next().unwrap();
+        } else {
+            freq = value;
+        }
+        if value.contains("UNTIL") {
+            until = value.split("UNTIL").next().unwrap();
+        } else {
+            until = value;
+        }
+        // log::info!("{}", until);
         match key {
             "FREQ" => {
-                event.frequency = match value {
+                event.frequency = match freq {
                     "YEARLY" => Frequency::Yearly,
                     "MONTHLY" => Frequency::Monthly,
                     "WEEKLY" => Frequency::Weekly,
                     "DAILY" => Frequency::Daily,
-                    _ => event.frequency, // Invalid value, keep the default frequency
+                    _ => {
+                        log::info!(
+                            "Invalid value, keep the default frequency: {:?}",
+                            event.frequency
+                        );
+                        event.frequency
+                    } // Invalid value, keep the default frequency
                 };
             }
             "UNTIL" => {
-                event.until = Some(value.to_string());
+                log::info!("UNTIL: {}", value);
+                event.until = Some(parse_timestamp(value).to_string());
             }
             "BYDAY" => {
                 event.by_day = Some(value.to_string());
@@ -159,15 +182,6 @@ fn parse_recurrence_rule(repeat_rule_string: String) -> RecurringEvent {
             _ => {} // Ignore unrecognized keys
         }
     }
-
-    // FREQ=WEEKLY;UNTIL=20230215T094459Z
-    // FREQ=WEEKLY;BYDAY=TU
-    // FREQ=YEARLY;BYMONTHDAY=27
-    // FREQ=WEEKLY
-    // FREQ=YEARLY
-    // FREQ=YEARLY
-    // FREQ=YEARLY;COUNT=20
-
     event
 }
 
@@ -179,25 +193,29 @@ fn is_appointment_on_date(appointment: &Appointment, date: DateTime<Utc>) -> boo
 
     // Check if the appointment matches the specific date based on the repeat rule
     let repeat_rule = appointment.repeat_rule.as_ref().unwrap();
+    if repeat_rule.until.is_some() {
+        return parse_timestamp(repeat_rule.until.as_ref().unwrap()) > date;
+    }
 
     match repeat_rule.frequency {
         Frequency::Yearly => {
             // Check if the appointment occurs on the specific day of the year
-            appointment.date.month() == date.month() && appointment.date.day() == date.day()
+            return appointment.date.month() == date.month() && appointment.date.day() == date.day()
         }
         Frequency::Monthly => {
             // Check if the appointment occurs on the specific day of the month
-            appointment.date.day() == date.day()
+            return appointment.date.day() == date.day()
         }
         Frequency::Weekly => {
             // Check if the appointment occurs on the specific day of the week
-            appointment.date.weekday() == date.weekday()
+            return appointment.date.weekday() == date.weekday()
         }
         Frequency::Daily => {
             // The appointment occurs every day, so it will always match
-            true
+            return true
         }
     }
+
 }
 
 #[derive(Debug, Clone)]
@@ -229,6 +247,41 @@ pub struct RecurringEvent {
     by_day: Option<String>, // Day of the week for weekly events (optional)
     by_month_day: Option<u32>, // Day of the month for yearly events (optional)
     count: Option<u32>,    // Number of occurrences (optional)
+}
+use regex::Regex;
+
+fn parse_recurring_event(data: &str) -> Option<RecurringEvent> {
+    let re = Regex::new(r"(?x)
+        FREQ=(?P<frequency>[A-Z]+);
+        (WKST=(?P<wkst>[A-Z]+);)?
+        (UNTIL=(?P<until>\d{8}T\d{6}Z);)?
+        (BYDAY=(?P<by_day>[A-Z]+);)?
+        (BYMONTHDAY=(?P<by_month_day>\d+);)?
+    ").unwrap();
+
+    if let Some(captures) = re.captures(data) {
+        let frequency = match captures.name("frequency").unwrap().as_str() {
+            "YEARLY" => Frequency::Yearly,
+            "MONTHLY" => Frequency::Monthly,
+            "WEEKLY" => Frequency::Weekly,
+            "DAILY" => Frequency::Daily,
+            _ => return None,
+        };
+
+        let until = captures.name("until").map(|m| m.as_str().to_owned());
+        let by_day = captures.name("by_day").map(|m| m.as_str().to_owned());
+        let by_month_day = captures.name("by_month_day").map(|m| m.as_str().parse::<u32>().ok()).flatten();
+
+        Some(RecurringEvent {
+            frequency,
+            until,
+            by_day,
+            by_month_day,
+            count: None, // You can add count parsing if needed
+        })
+    } else {
+        None
+    }
 }
 
 pub fn parse_query(mut query: String) -> String {

@@ -3,12 +3,13 @@ mod config;
 mod history;
 mod message_parsers;
 mod modules;
+
 use crate::{
     ai::chat::History,
     config::get_ini_value,
     history::file::write_history_to_file,
     message_parsers::{is_question_about_appointment, is_question_about_pokemon},
-    modules::pokeapi::PokemonEx,
+    modules::{ pokeapi::PokemonEx},
 };
 use dotenv::dotenv;
 use teloxide::{prelude::*, types::InputFile};
@@ -16,6 +17,7 @@ use teloxide::{prelude::*, types::InputFile};
 async fn main() {
     dotenv().ok();
     pretty_env_logger::init();
+
     log::info!("Starting waifu bot...");
 
     let bot = Bot::new(get_ini_value("telegram", "token").unwrap());
