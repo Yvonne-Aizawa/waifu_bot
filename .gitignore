@@ -5,3 +5,5 @@ history_*.json
 Cargo.lock
 /http-cacache
 output_audio.ogg
+config.yml
+output.mp3
