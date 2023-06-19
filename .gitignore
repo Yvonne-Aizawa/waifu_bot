@@ -1,5 +1,5 @@
 /target
-/config
+/config/config.ini
 output_image.png
 history_*.json
 Cargo.lock
