@@ -1,16 +1,20 @@
-mod config;
 mod ai;
+mod config;
 mod history;
 mod message_parsers;
 mod modules;
-use teloxide::{prelude::*, types::InputFile};
 use crate::{
+    ai::chat::History,
     config::get_ini_value,
-    ai::chat::History, history::file::write_history_to_file,
-    message_parsers::is_question_about_appointment,
+    history::file::write_history_to_file,
+    message_parsers::{is_question_about_appointment, is_question_about_pokemon},
+    modules::pokeapi::PokemonEx,
 };
+use dotenv::dotenv;
+use teloxide::{prelude::*, types::InputFile};
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     pretty_env_logger::init();
     log::info!("Starting waifu bot...");
 
@@ -108,6 +112,19 @@ async fn main() {
                     log::info!("asked for appointments");
                     message = modules::calendar::parse_query(message.to_string()).to_string();
                     log::debug!("appointments parsed {}", message);
+                }
+                if is_question_about_pokemon(&message_text){
+                    match modules::pokeapi::find_pokemon(message_text){
+                        Some(pokemon) => {
+                            let res = modules::pokeapi::get_pokemon(&pokemon).await;
+                            match res {
+                                Some(pokemon) => {message =  pokemon.to_ai_string()},
+                                None => {log::error!("could not get pokemon")
+                            }}
+                        }
+                        None => {}
+                    }
+
                 }
 
                 log::info!("message: {}", message);

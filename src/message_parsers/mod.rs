@@ -23,6 +23,15 @@ pub fn user_asked_for_pictures(question: &str) -> bool {
         || lower_question.contains("see you")
         || lower_question.contains("show")
 }
+pub fn is_question_about_pokemon(question: &str) -> bool {
+    let lower_question = question.to_lowercase();
+    lower_question.contains("pokemon")
+        || lower_question.contains("pokedex")
+        || lower_question.contains("dex")
+        || lower_question.contains("poke")
+        || lower_question.contains("pok")
+        || lower_question.contains("type")
+}
 
 pub fn has_multiple_self_references(text: &str) -> bool {
     let regex = Regex::new(r"\b(i|me|my|mine|me)\b").unwrap();

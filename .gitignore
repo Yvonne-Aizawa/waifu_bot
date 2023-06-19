@@ -3,3 +3,4 @@
 output_image.png
 history_*.json
 Cargo.lock
+/http-cacache
