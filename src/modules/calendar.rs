@@ -75,7 +75,6 @@ fn get_appointments_on_date(
     let mut day_appointments = vec![];
     for appointment in appointments {
         if is_appointment_on_date(&appointment, date) {
-            
             day_appointments.push(appointment)
         }
     }
@@ -200,22 +199,22 @@ fn is_appointment_on_date(appointment: &Appointment, date: DateTime<Utc>) -> boo
     match repeat_rule.frequency {
         Frequency::Yearly => {
             // Check if the appointment occurs on the specific day of the year
-            return appointment.date.month() == date.month() && appointment.date.day() == date.day()
+            return appointment.date.month() == date.month()
+                && appointment.date.day() == date.day();
         }
         Frequency::Monthly => {
             // Check if the appointment occurs on the specific day of the month
-            return appointment.date.day() == date.day()
+            return appointment.date.day() == date.day();
         }
         Frequency::Weekly => {
             // Check if the appointment occurs on the specific day of the week
-            return appointment.date.weekday() == date.weekday()
+            return appointment.date.weekday() == date.weekday();
         }
         Frequency::Daily => {
             // The appointment occurs every day, so it will always match
-            return true
+            return true;
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
@@ -251,13 +250,16 @@ pub struct RecurringEvent {
 use regex::Regex;
 
 fn parse_recurring_event(data: &str) -> Option<RecurringEvent> {
-    let re = Regex::new(r"(?x)
+    let re = Regex::new(
+        r"(?x)
         FREQ=(?P<frequency>[A-Z]+);
         (WKST=(?P<wkst>[A-Z]+);)?
         (UNTIL=(?P<until>\d{8}T\d{6}Z);)?
         (BYDAY=(?P<by_day>[A-Z]+);)?
         (BYMONTHDAY=(?P<by_month_day>\d+);)?
-    ").unwrap();
+    ",
+    )
+    .unwrap();
 
     if let Some(captures) = re.captures(data) {
         let frequency = match captures.name("frequency").unwrap().as_str() {
@@ -270,7 +272,10 @@ fn parse_recurring_event(data: &str) -> Option<RecurringEvent> {
 
         let until = captures.name("until").map(|m| m.as_str().to_owned());
         let by_day = captures.name("by_day").map(|m| m.as_str().to_owned());
-        let by_month_day = captures.name("by_month_day").map(|m| m.as_str().parse::<u32>().ok()).flatten();
+        let by_month_day = captures
+            .name("by_month_day")
+            .map(|m| m.as_str().parse::<u32>().ok())
+            .flatten();
 
         Some(RecurringEvent {
             frequency,
