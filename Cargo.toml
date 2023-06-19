@@ -23,4 +23,4 @@ chrono = "0.4"
 minicaldav = "0.7.0"
 rustemon = "3.2.0"
 dotenv = "0.15.0"
-
+rust-ai = "0.1.19"

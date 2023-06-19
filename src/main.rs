@@ -3,10 +3,11 @@ mod config;
 mod history;
 mod message_parsers;
 mod modules;
-
 use std::{path::PathBuf, process::exit};
 
-use reqwest::{header, multipart};
+use rust_ai::azure::{ssml::Speak, Locale, Speech, VoiceName, SSML};
+
+use reqwest::multipart;
 use tokio::{
     fs::{self, File},
     io::AsyncReadExt,
@@ -24,7 +25,7 @@ use teloxide::{
     net::Download,
     types::{MediaKind::Audio, MediaKind::Voice},
 };
-use teloxide::{payloads::GetFile, prelude::*, types::InputFile};
+use teloxide::{prelude::*, types::InputFile};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -78,7 +79,11 @@ async fn main() {
                                                 extract_audio_from_file("output_audio.ogg").await;
                                             match res {
                                                 Ok(o) => {
-                                                    bot.send_message(chat_id, format!("heard: {}", &o)).await;
+                                                    bot.send_message(
+                                                        chat_id,
+                                                        format!("heard: {}", &o),
+                                                    )
+                                                    .await;
                                                     let res = ai_reply(
                                                         chat_id,
                                                         &bot,
@@ -159,7 +164,9 @@ async fn ai_reply(
     mut history: History,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // test if user asked for pictures
-    if message_parsers::user_asked_for_pictures(message_text) {
+    if message_parsers::user_asked_for_pictures(message_text)
+        && get_ini_value("sd_ai", "enabled").unwrap() == "true"
+    {
         bot.send_message(chat_id, "Generating picture...").await?;
         // generate a picture
         // ask ai for a promt.
@@ -230,7 +237,9 @@ async fn ai_reply(
         // no image was requested
         // TODO implement history
         // TODO implement calendar
-        if is_question_about_appointment(&message_text) {
+        if is_question_about_appointment(&message_text)
+            && get_ini_value("calendar", "enabled").unwrap() == "true"
+        {
             log::info!("asked for appointments");
             message = modules::calendar::parse_query(message.to_string()).to_string();
             log::debug!("appointments parsed {}", message);
@@ -258,10 +267,30 @@ async fn ai_reply(
                 Some(last_message) => {
                     write_history_to_file(&response.results[0].history.clone());
 
-                    let res = bot.send_message(chat_id, last_message).await;
+                    let res = bot.send_message(chat_id, last_message.to_owned()).await;
+
                     match res {
                         Ok(_) => {
-                            log::info!("message sent");
+                            // lets check if tts is enabled
+                            if get_ini_value("tts", "enabled").unwrap() == "true" {
+                                log::info!("message sent");
+                                let res = generate_voice(last_message.to_owned()).await;
+                                match res {
+                                    Ok(_) => {
+                                        let input_file = InputFile::file("output.mp3");
+                                        let res = bot.send_voice(chat_id, input_file).await;
+                                        match res {
+                                            Ok(_) => {}
+                                            Err(e) => {
+                                                log::error!("{:?}", e);
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        log::error!("{:?}", e);
+                                    }
+                                }
+                            }
                         }
                         Err(e) => {
                             log::error!("{:?}", e);
@@ -279,4 +308,28 @@ async fn ai_reply(
         }
     }
     Ok(())
+}
+async fn generate_voice(string: String) -> Result<(), ()> {
+    let ssml =
+        SSML::from(Speak::voice_content(VoiceName::en_US_JennyNeural, &string).lang(Locale::en_US));
+
+    log::debug!("{}", ssml.to_string());
+
+    let result = Speech::from(ssml).tts().await;
+    match result {
+        Ok(result) => {
+            log::debug!("{:?}", result);
+            let res = std::fs::write(PathBuf::from(r"./output.mp3"), result);
+            match res {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    return Err(());
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("{:?}", e);
+            return Err(());
+        }
+    }
 }
