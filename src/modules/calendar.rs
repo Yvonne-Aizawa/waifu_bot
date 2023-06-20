@@ -227,7 +227,7 @@ pub fn parse_query(mut query: String) -> String {
             "{} {} at {} \n",
             appointment_text.clone(),
             appointment.summary,
-            appointment.date.format("%H:%M")
+            convert_24_to_12_hour(&appointment.date.format("%H:%M").to_string())
         )
         .to_string();
     }
@@ -237,7 +237,16 @@ pub fn parse_query(mut query: String) -> String {
 
     query = format!(
     "{} \n {} can use the info provided in the || \n current time: {} \n appointments date {} \n user appointments today: \n {} \n ",
-    query,get_ini_value("chat_ai", "character").unwrap(),date.format("%H:%M:%S"), Utc::now().format("%Y-%m-%d"),appointment_text
+    query,get_ini_value("chat_ai", "character").unwrap(),convert_24_to_12_hour(&date.format("%H:%M").to_string()), Utc::now().format("%Y-%m-%d"),appointment_text
 );
     query
+}
+fn convert_24_to_12_hour(time_str: &str) -> String {
+    let parts: Vec<&str> = time_str.split(':').collect();
+    let hour: i32 = parts[0].parse().unwrap();
+    let minute: i32 = parts[1].parse().unwrap();
+
+    let am_pm = if hour < 12 { "AM" } else { "PM" };
+    let hour_12 = if hour % 12 == 0 { 12 } else { hour % 12 };
+    format!("{:02}:{:02} {}", hour_12, minute, am_pm)
 }
