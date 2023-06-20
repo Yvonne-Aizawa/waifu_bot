@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use rust_ai::azure::{ssml::Speak, Locale, Speech, VoiceName, SSML};
 
+use crate::config::get_ini_value;
+
 pub async fn extract_audio_from_file() -> Result<String, ()> {
     let client = reqwest::Client::new();
 
@@ -54,6 +56,21 @@ pub async fn extract_audio_from_file() -> Result<String, ()> {
 }
 
 pub async fn generate_voice(string: String) -> Result<(), ()> {
+    std::env::set_var(
+        "RUST_AI_CONFIG",
+        format!(
+            r#"
+openai:
+  api_key: sk-
+  base_endpoint: http://localhost
+azure:
+  speech:
+    key: {}
+    region: {}"#,
+            get_ini_value("azure", "key").unwrap(),
+            get_ini_value("azure", "region").unwrap()
+        ),
+    );
     let ssml =
         SSML::from(Speak::voice_content(VoiceName::en_US_JennyNeural, &string).lang(Locale::en_US));
 

@@ -25,8 +25,8 @@ use teloxide::{prelude::*, types::InputFile};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    std::env::set_var("RUST_LOG", get_ini_value("log", "level").unwrap());
     pretty_env_logger::init();
-
     log::info!("Starting waifu bot...");
     let token = get_ini_value("telegram", "token");
     match token {
@@ -57,6 +57,7 @@ async fn main() {
                             let res = ai_reply(chat_id, &bot, text, history).await;
                             match res {
                                 Ok(_) => {
+                                    //lol seems like it always returns Ok
                                     log::info!("ai has replied")
                                 }
                                 Err(e) => {

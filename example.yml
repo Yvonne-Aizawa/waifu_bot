@@ -1,8 +1,0 @@
-openai:
-  api_key: sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-  org_id: org-xxx
-  base_endpoint: http://localhost
-azure:
-  speech:
-    key: 4c7eXXXXXXXXXXXXXXXXXXXXXXX54c32
-    region: westus
