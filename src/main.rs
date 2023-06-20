@@ -78,7 +78,7 @@ async fn main() {
                                     match res {
                                         Ok(file) => {
                                             let mut dst =
-                                                fs::File::create("output_audio.ogg").await?;
+                                                fs::File::create("./out/output_audio.ogg").await?;
                                             let res = bot.download_file(&file.path, &mut dst).await;
                                             match res {
                                                 Ok(()) => {
@@ -199,7 +199,7 @@ async fn ai_reply(
                     Ok(_) => {
                         log::info!("photo generated");
                         //send picture
-                        let input_file = InputFile::file("output_image.png");
+                        let input_file = InputFile::file("./out/output_image.png");
                         let res = bot.send_photo(chat_id, input_file).await;
                         match res {
                             Ok(_) => {
@@ -291,7 +291,7 @@ async fn ai_reply(
                                 let res = generate_voice(last_message.to_owned()).await;
                                 match res {
                                     Ok(_) => {
-                                        let input_file = InputFile::file("output.mp3");
+                                        let input_file = InputFile::file("./out/output.mp3");
                                         let res = bot.send_voice(chat_id, input_file).await;
                                         match res {
                                             Ok(_) => {}

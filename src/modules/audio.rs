@@ -9,7 +9,7 @@ pub async fn extract_audio_from_file() -> Result<String, ()> {
     let client = reqwest::Client::new();
 
     // Read the file contents into a Vec<u8>
-    let file = File::open("output_audio.ogg").await;
+    let file = File::open("./out/output_audio.ogg").await;
     match file {
         Ok(mut f) => {
             let mut file_contents = Vec::new();
@@ -19,7 +19,7 @@ pub async fn extract_audio_from_file() -> Result<String, ()> {
             let audio_file = multipart::Part::bytes(file_contents)
                 .mime_str("video/ogg")
                 .unwrap()
-                .file_name("output_audio.ogg");
+                .file_name("./out/output_audio.ogg");
             let form = multipart::Form::new().part("audio_file", audio_file);
 
             // Send the request
@@ -63,7 +63,7 @@ pub async fn generate_voice(string: String) -> Result<(), ()> {
     match result {
         Ok(result) => {
             log::debug!("{:?}", result);
-            let res = std::fs::write(PathBuf::from(r"./output.mp3"), result);
+            let res = std::fs::write(PathBuf::from(r"./out/output.mp3"), result);
             match res {
                 Ok(_) => return Ok(()),
                 Err(e) => {

@@ -144,7 +144,7 @@ struct UserContext {
 fn save_without_splitting_image(image_base64: String) -> std::io::Result<()> {
     let image_data = decode(image_base64);
 
-    let file_path = "output_image.png";
+    let file_path = "./out/output_image.png";
     let file = File::create(file_path);
     if let Ok(mut f) = file {
         f.write_all(&image_data.unwrap())?;
