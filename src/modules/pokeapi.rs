@@ -19,8 +19,6 @@ pub trait PokemonEx {
 }
 impl PokemonEx for Pokemon {
     fn to_ai_string(&self) -> String {
-        let rustemon_client = rustemon::client::RustemonClient::default();
-
         let types: Vec<String> = self
             .types
             .iter()
