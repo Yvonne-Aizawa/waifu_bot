@@ -4,13 +4,17 @@ mod history;
 mod message_parsers;
 mod modules;
 
+use std::process::exit;
+
 use tokio::fs;
 
 use crate::{
     ai::chat::History,
     config::get_ini_value,
     history::file::write_history_to_file,
-    message_parsers::{is_question_about_appointment, is_question_about_pokemon},
+    message_parsers::{
+        is_question_about_appointment, is_question_about_pokemon, is_question_about_weather,
+    },
     modules::{
         audio::{extract_audio_from_file, generate_voice},
         pokeapi::PokemonEx,
@@ -25,6 +29,7 @@ use teloxide::{prelude::*, types::InputFile};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+
     std::env::set_var("RUST_LOG", get_ini_value("log", "level").unwrap());
     pretty_env_logger::init();
     log::info!("Starting waifu bot...");
@@ -253,6 +258,7 @@ async fn ai_reply(
             message = modules::calendar::parse_query(message.to_string()).to_string();
             log::debug!("appointments parsed {}", message);
         }
+
         if is_question_about_pokemon(&message_text) {
             match modules::pokeapi::find_pokemon(message_text) {
                 Some(pokemon) => {

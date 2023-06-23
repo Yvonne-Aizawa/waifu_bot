@@ -1,8 +1,10 @@
+use std::io::Error;
+
 use crate::config::get_ini_value;
 use chrono::{DateTime, Datelike, Local, NaiveDateTime, Utc};
 use ureq;
 use url;
-fn get_appointments() -> Vec<Appointment> {
+fn get_appointments() -> Result<Vec<Appointment>, Error> {
     let mut appointments: Vec<Appointment> = vec![];
     let agent = ureq::Agent::new();
     let url =
@@ -13,59 +15,72 @@ fn get_appointments() -> Vec<Appointment> {
         get_ini_value("calendar", "username").expect("could not find username in calendar");
     let password =
         get_ini_value("calendar", "password").expect("could not find config in calendar");
-    let calendars = minicaldav::get_calendars(agent.clone(), &username, &password, &url).unwrap();
-    for calendar in calendars {
-        let (events, _error) =
-            minicaldav::get_events(agent.clone(), &username, &password, &calendar).unwrap();
-        for event in events {
-            let mut summary = "".to_string();
-            let mut date: DateTime<Utc> = DateTime::default();
-            let mut repeat = "".to_string();
-            let mut set_summary = false;
-            let mut set_date = false;
+    let calendars_res = minicaldav::get_calendars(agent.clone(), &username, &password, &url);
+    match calendars_res {
+        Ok(calendars) => {
+            for calendar in calendars {
+                let event_res =
+                    minicaldav::get_events(agent.clone(), &username, &password, &calendar);
+                match event_res {
+                    Ok(events) => {
+                        let mut summary = "".to_string();
+                        let mut date: DateTime<Utc> = DateTime::default();
+                        let mut repeat = "".to_string();
+                        let mut set_summary = false;
+                        let mut set_date = false;
+                        for event in events.0 {
+                            for prop in event.properties() {
+                                if prop.0 == "SUMMARY" {
+                                    set_summary = true;
+                                    summary = prop.1.to_string();
+                                }
+                                if prop.0 == "DTSTART" {
+                                    date = parse_timestamp(prop.1);
+                                    set_date = true;
+                                }
+                                if prop.0 == "RRULE" {
+                                    repeat = prop.1.to_string();
+                                }
+                            }
+                            if set_summary && set_date {
+                                if repeat.is_empty() {
+                                    appointments.push(Appointment {
+                                        calendar: calendar.name().to_string(),
+                                        date,
+                                        summary: summary.clone(),
+                                        repeat_rule: None,
+                                    });
+                                } else {
+                                    appointments.push(Appointment {
+                                        calendar: calendar.name().to_string(),
+                                        date,
+                                        summary: summary.clone(),
+                                        repeat_rule: parse_recurring_event(&repeat),
+                                    });
+                                }
+                            }
+                        }
+                    }
 
-            for prop in event.properties() {
-                if prop.0 == "SUMMARY" {
-                    set_summary = true;
-                    summary = prop.1.to_string();
-                }
-                if prop.0 == "DTSTART" {
-                    date = parse_timestamp(prop.1);
-                    set_date = true;
-                }
-                if prop.0 == "RRULE" {
-                    repeat = prop.1.to_string();
-                }
-            }
-            if set_summary && set_date {
-                if repeat.is_empty() {
-                    appointments.push(Appointment {
-                        calendar: calendar.name().to_string(),
-                        date,
-                        summary: summary.clone(),
-                        repeat_rule: None,
-                    });
-                } else {
-                    appointments.push(Appointment {
-                        calendar: calendar.name().to_string(),
-                        date,
-                        summary: summary.clone(),
-                        repeat_rule: parse_recurring_event(&repeat),
-                    });
+                    Err(_) => todo!(),
                 }
             }
         }
+        Err(_) => todo!(),
     }
 
-    appointments
+    Ok(appointments)
 }
 #[allow(dead_code)]
-pub fn get_all_appointments() -> Vec<Appointment> {
+pub fn get_all_appointments() -> Result<Vec<Appointment>, Error> {
     get_appointments()
 }
-pub fn get_all_appointments_on_date(date: DateTime<Utc>) -> Vec<Appointment> {
-    let appointments = get_appointments();
-    get_appointments_on_date(appointments, date)
+pub fn get_all_appointments_on_date(date: DateTime<Utc>) -> Result<Vec<Appointment>, Error> {
+    let appointments_res = get_appointments();
+    match appointments_res {
+        Ok(appointments) => Ok(get_appointments_on_date(appointments, date)),
+        Err(_) => todo!(),
+    }
 }
 
 fn get_appointments_on_date(
@@ -220,25 +235,30 @@ fn parse_recurring_event(data: &str) -> Option<RecurringEvent> {
 pub fn parse_query(mut query: String) -> String {
     let date = Local::now();
 
-    let appointments = get_all_appointments_on_date(Utc::now());
-    let mut appointment_text = "".to_string();
-    for appointment in appointments {
-        appointment_text = format!(
-            "{} {} at {} \n",
-            appointment_text.clone(),
-            appointment.summary,
-            convert_24_to_12_hour(&appointment.date.format("%H:%M").to_string())
-        )
-        .to_string();
-    }
-    if appointment_text.is_empty() {
-        appointment_text = "No appointments today".to_string();
+    let appointments_res = get_all_appointments_on_date(Utc::now());
+    match appointments_res {
+        Ok(appointments) => {
+            let mut appointment_text = "".to_string();
+            for appointment in appointments {
+                appointment_text = format!(
+                    "{} {} at {} \n",
+                    appointment_text.clone(),
+                    appointment.summary,
+                    convert_24_to_12_hour(&appointment.date.format("%H:%M").to_string())
+                )
+                .to_string();
+            }
+            if appointment_text.is_empty() {
+                appointment_text = "No appointments today".to_string();
+            }
+
+            query = format!(
+            "{} \n {} can use the info provided in the || \n current time: {} \n appointments date {} \n user appointments today: \n {} \n ",
+            query,get_ini_value("chat_ai", "character").unwrap(),convert_24_to_12_hour(&date.format("%H:%M").to_string()), Utc::now().format("%Y-%m-%d"),appointment_text);
+        }
+        Err(_) => {}
     }
 
-    query = format!(
-    "{} \n {} can use the info provided in the || \n current time: {} \n appointments date {} \n user appointments today: \n {} \n ",
-    query,get_ini_value("chat_ai", "character").unwrap(),convert_24_to_12_hour(&date.format("%H:%M").to_string()), Utc::now().format("%Y-%m-%d"),appointment_text
-);
     query
 }
 fn convert_24_to_12_hour(time_str: &str) -> String {

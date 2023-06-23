@@ -32,6 +32,12 @@ pub fn is_question_about_pokemon(question: &str) -> bool {
         || lower_question.contains("pok")
         || lower_question.contains("type")
 }
+pub fn is_question_about_weather(question: &str) -> bool {
+    let lower_question = question.to_lowercase();
+    lower_question.contains("temperature")
+        || lower_question.contains("weather")
+        || lower_question.contains("forecast")
+}
 
 pub fn has_multiple_self_references(text: &str) -> bool {
     let regex = Regex::new(r"\b(i|me|my|mine|me)\b").unwrap();

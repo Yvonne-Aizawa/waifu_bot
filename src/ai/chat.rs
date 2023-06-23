@@ -150,10 +150,6 @@ pub async fn play_promt(prompt: String, history: History) -> Result<ApiResponse,
                     } else if status == &StatusCode::NOT_FOUND {
                         return Err(ApiError::ServerNotUp);
                     }
-                    if status == &StatusCode::OK {
-                        // this means most likely that the iamge could not be generated
-                        return Err(ApiError::ImageServerNotUp);
-                    }
                     return Err(ApiError::Unknown);
                 }
             }
@@ -168,7 +164,6 @@ pub async fn play_promt(prompt: String, history: History) -> Result<ApiResponse,
 pub enum ApiError {
     ServerNotUp,
     SeverStarting,
-    ImageServerNotUp,
     Unknown,
 }
 impl ToString for ChatRequest {

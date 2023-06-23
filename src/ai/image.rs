@@ -77,11 +77,24 @@ pub async fn generate_image(prompt: String) -> Result<(), Error> {
         .body(serde_json::to_string(&image_request).unwrap())
         .send()
         .await;
+
     if let Ok(x) = response {
         let response_string = x.text().await;
-        let image: GeneratedImage = serde_json::from_str(&response_string.unwrap()).unwrap();
-        let result = save_without_splitting_image(image.images[0].to_string());
-        return result;
+        let res_image = serde_json::from_str(&response_string.unwrap());
+        match res_image {
+            Ok(_) => {
+                let image: GeneratedImage = res_image.unwrap();
+                let result = save_without_splitting_image(image.images[0].to_string());
+                return result;
+            }
+            Err(e) => {
+                log::error!("Error{}", e);
+                return Err(Error::new(
+                    std::io::ErrorKind::ConnectionRefused,
+                    "Could not generate image",
+                ));
+            }
+        }
     }
     Ok(())
 
