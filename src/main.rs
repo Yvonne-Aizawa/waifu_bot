@@ -13,7 +13,8 @@ use crate::{
     config::get_ini_value,
     history::file::write_history_to_file,
     message_parsers::{
-        is_question_about_appointment, is_question_about_pokemon, is_question_about_weather,
+        is_question_about_appointment, is_question_about_pokemon,
+        is_question_about_weather,
     },
     modules::{
         audio::{extract_audio_from_file, generate_voice},
@@ -66,7 +67,7 @@ async fn main() {
                                     log::info!("ai has replied")
                                 }
                                 Err(e) => {
-                                    log::error!("Error: {:?}", e)
+                                    log::error!("Error: {}", e)
                                 }
                             }
                         }
@@ -106,7 +107,7 @@ async fn main() {
                                                                     )
                                                                 }
                                                                 Err(e) => {
-                                                                    log::error!("error: {:?}", e)
+                                                                    log::error!("error: {}", e)
                                                                 }
                                                             }
                                                             let res = ai_reply(
@@ -121,7 +122,7 @@ async fn main() {
                                                                     log::info!("ai has replied")
                                                                 }
                                                                 Err(e) => {
-                                                                    log::error!("Error: {:?}", e)
+                                                                    log::error!("Error: {}", e)
                                                                 }
                                                             }
                                                         }
@@ -325,6 +326,20 @@ async fn ai_reply(
             Err(e) => {
                 // TODO notify user of error
                 log::error!("{:?}", e);
+                match e {
+                    ai::chat::ApiError::ServerNotUp => {
+                        bot.send_message(chat_id, "ai server not up or configured incorrectly")
+                            .await?;
+                    }
+                    ai::chat::ApiError::SeverStarting => {
+                        bot.send_message(chat_id, "ai server is starting").await?;
+                    }
+                    ai::chat::ApiError::Unknown => {
+                        bot.send_message(chat_id, "unknown error").await?;
+                    }
+                }
+
+                return Err(Box::new(e));
             }
         }
     }
