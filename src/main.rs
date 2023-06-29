@@ -4,7 +4,7 @@ mod history;
 mod message_parsers;
 mod modules;
 
-use std::process::exit;
+use std::{process::exit, sync::Arc};
 
 use tokio::fs;
 
@@ -13,8 +13,7 @@ use crate::{
     config::get_ini_value,
     history::file::write_history_to_file,
     message_parsers::{
-        is_question_about_appointment, is_question_about_pokemon,
-        is_question_about_weather,
+        is_question_about_appointment, is_question_about_pokemon, is_question_about_weather,
     },
     modules::{
         audio::{extract_audio_from_file, generate_voice},
@@ -258,6 +257,51 @@ async fn ai_reply(
             log::info!("asked for appointments");
             message = modules::calendar::parse_query(message.to_string()).to_string();
             log::debug!("appointments parsed {}", message);
+        }
+        if is_question_about_weather(&message_text) {
+            log::info!("asked for weather {}", message_text);
+            let mut config = huggingface_inference_rs::Config::default();
+            config.key = get_ini_value("huggingface", "token").unwrap();
+            let client = huggingface_inference_rs::Client::new(config);
+            let res = client.get_classifications(message_text.to_owned()).await;
+            match &res {
+                Ok(res) => {
+                    let mut first_loc: Vec<&str> = Vec::new();
+
+                    // TODO implement weather module
+                    // if res contains a LOC entity_group
+                    log::info!("res: {:?}", res);
+                    for entity in res {
+                        if entity.entity_group == "LOC" {
+                            first_loc.push(entity.word.as_ref());
+                        }
+                    }
+                    if first_loc.len() == 0 {
+                        for entity in res {
+                            if entity.entity_group == "ORG" {
+                                first_loc.push(entity.word.as_ref());
+                            }
+                        }
+                    }
+                    // if there is a first location
+                    log::info!("first location: {:?}", first_loc);
+                    if first_loc.len() > 0 {
+                        match modules::weather::get_weather(first_loc[0].to_string()).await {
+                            None => {
+                                log::error!("could not get weather");
+                            }
+                            Some(w) => {
+                               message = format!("{} | this is the weather information you can relay it to the user |  {}", message, w);
+                            }
+                        }
+                        log::info!("weather: {:?}", message);
+                    }
+                }
+
+                Err(e) => {
+                    log::error!("error: {}", e)
+                }
+            }
         }
 
         if is_question_about_pokemon(&message_text) {

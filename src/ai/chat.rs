@@ -144,7 +144,7 @@ pub async fn play_promt(prompt: String, history: History) -> Result<ApiResponse,
                 Ok(x) => {
                     return Ok(x);
                 }
-                Err(_) => {
+                Err(_) => { 
                     if status == &StatusCode::UNAUTHORIZED {
                         return Err(ApiError::SeverStarting);
                     } else if status == &StatusCode::NOT_FOUND {
