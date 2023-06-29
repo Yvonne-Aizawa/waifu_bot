@@ -9,7 +9,8 @@ edition = "2021"
 rust-ini = "0.19"
 teloxide = { version = "0.12", features = ["macros"] }
 log = "0.4"
-pretty_env_logger = "0.5.0"
+# pretty_env_logger = "0.5.0"
+pretty_env_logger = { git = "https://github.com/yvonne-aizawa/pretty-env-logger/"}
 tokio = { version =  "1.28.2", features = ["rt-multi-thread", "macros"] }
 base64 = "0.21.2"
 reqwest = { version = "0.11.18", features = ["json", "blocking"] }
@@ -24,4 +25,6 @@ minicaldav = "0.7.0"
 rustemon = "3.2.0"
 dotenv = "0.15.0"
 rust-ai = "0.1.19"
-openweathermap_client = "0.2.0"
+openweathermap_client = {git = "https://github.com/Yvonne-Aizawa/openweathermap"}
+huggingface_inference_rs = "0.4.0"
+# huggingface_inference_rs = {path = "/home/yvonne/Documents/GitHub/hg_api/"}

@@ -97,9 +97,9 @@ pub async fn play_promt(prompt: String, history: History) -> Result<ApiResponse,
         regenerate: false,
         _continue: false,
         stop_at_newline: false,
-        chat_prompt_size: 250,
+        chat_prompt_size: 400,
         chat_generation_attempts: 1,
-        max_new_tokens: 250,
+        max_new_tokens: 2048,
         do_sample: true,
         temperature: 1.0,
         top_p: 0.5,
@@ -128,23 +128,23 @@ pub async fn play_promt(prompt: String, history: History) -> Result<ApiResponse,
     };
     if let Some(url) = get_ini_value("chat_ai", "url") {
         let response = client
-            .post(format!("{}api/v1/chat", url))
+            .post(format!("{}/api/v1/chat", url))
             .headers(headers)
             .body(chat_request.to_string())
             .send()
             .await;
         if let Ok(x) = response {
             let status = &x.status();
-            let text = x.text();
+            let text = x.text().await.unwrap();
+            log::trace!("status: {status}, text: {text}");
 
             // Deserialize the JSON string into the ApiResponse struct
-            let api_response: Result<ApiResponse, serde_json::Error> =
-                serde_json::from_str(text.await.as_ref().ok().unwrap());
+            let api_response: Result<ApiResponse, serde_json::Error> = serde_json::from_str(&text);
             match api_response {
                 Ok(x) => {
                     return Ok(x);
                 }
-                Err(_) => {
+                Err(_) => { 
                     if status == &StatusCode::UNAUTHORIZED {
                         return Err(ApiError::SeverStarting);
                     } else if status == &StatusCode::NOT_FOUND {
@@ -166,6 +166,16 @@ pub enum ApiError {
     SeverStarting,
     Unknown,
 }
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ApiError::ServerNotUp => write!(f, "Server not up"),
+            ApiError::SeverStarting => write!(f, "Server starting"),
+            ApiError::Unknown => write!(f, "Unknown error"),
+        }
+    }
+}
+impl std::error::Error for ApiError {}
 impl ToString for ChatRequest {
     fn to_string(&self) -> String {
         serde_json::to_string(self).unwrap()

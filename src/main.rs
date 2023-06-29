@@ -4,7 +4,7 @@ mod history;
 mod message_parsers;
 mod modules;
 
-use std::process::exit;
+use std::{process::exit, sync::Arc};
 
 use tokio::fs;
 
@@ -66,7 +66,7 @@ async fn main() {
                                     log::info!("ai has replied")
                                 }
                                 Err(e) => {
-                                    log::error!("Error: {:?}", e)
+                                    log::error!("Error: {}", e)
                                 }
                             }
                         }
@@ -106,7 +106,7 @@ async fn main() {
                                                                     )
                                                                 }
                                                                 Err(e) => {
-                                                                    log::error!("error: {:?}", e)
+                                                                    log::error!("error: {}", e)
                                                                 }
                                                             }
                                                             let res = ai_reply(
@@ -121,7 +121,7 @@ async fn main() {
                                                                     log::info!("ai has replied")
                                                                 }
                                                                 Err(e) => {
-                                                                    log::error!("Error: {:?}", e)
+                                                                    log::error!("Error: {}", e)
                                                                 }
                                                             }
                                                         }
@@ -258,6 +258,51 @@ async fn ai_reply(
             message = modules::calendar::parse_query(message.to_string()).to_string();
             log::debug!("appointments parsed {}", message);
         }
+        if is_question_about_weather(&message_text) {
+            log::info!("asked for weather {}", message_text);
+            let mut config = huggingface_inference_rs::Config::default();
+            config.key = get_ini_value("huggingface", "token").unwrap();
+            let client = huggingface_inference_rs::Client::new(config);
+            let res = client.get_classifications(message_text.to_owned()).await;
+            match &res {
+                Ok(res) => {
+                    let mut first_loc: Vec<&str> = Vec::new();
+
+                    // TODO implement weather module
+                    // if res contains a LOC entity_group
+                    log::info!("res: {:?}", res);
+                    for entity in res {
+                        if entity.entity_group == "LOC" {
+                            first_loc.push(entity.word.as_ref());
+                        }
+                    }
+                    if first_loc.len() == 0 {
+                        for entity in res {
+                            if entity.entity_group == "ORG" {
+                                first_loc.push(entity.word.as_ref());
+                            }
+                        }
+                    }
+                    // if there is a first location
+                    log::info!("first location: {:?}", first_loc);
+                    if first_loc.len() > 0 {
+                        match modules::weather::get_weather(first_loc[0].to_string()).await {
+                            None => {
+                                log::error!("could not get weather");
+                            }
+                            Some(w) => {
+                               message = format!("{} | this is the weather information you can relay it to the user |  {}", message, w);
+                            }
+                        }
+                        log::info!("weather: {:?}", message);
+                    }
+                }
+
+                Err(e) => {
+                    log::error!("error: {}", e)
+                }
+            }
+        }
 
         if is_question_about_pokemon(&message_text) {
             match modules::pokeapi::find_pokemon(message_text) {
@@ -325,6 +370,20 @@ async fn ai_reply(
             Err(e) => {
                 // TODO notify user of error
                 log::error!("{:?}", e);
+                match e {
+                    ai::chat::ApiError::ServerNotUp => {
+                        bot.send_message(chat_id, "ai server not up or configured incorrectly")
+                            .await?;
+                    }
+                    ai::chat::ApiError::SeverStarting => {
+                        bot.send_message(chat_id, "ai server is starting").await?;
+                    }
+                    ai::chat::ApiError::Unknown => {
+                        bot.send_message(chat_id, "unknown error").await?;
+                    }
+                }
+
+                return Err(Box::new(e));
             }
         }
     }
