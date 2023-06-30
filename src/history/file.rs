@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 
 use crate::ai::chat::History;
 use crate::config::get_ini_value;
-pub fn write_history_to_file(history: &History) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_history_to_file(history: &History) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let json_data = serde_json::to_string(&history)?;
     let mut file = File::create(format!(
         "history_{}.json",

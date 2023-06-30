@@ -59,6 +59,35 @@ async fn main() {
                 if user == &get_ini_value("telegram", "user").unwrap() {
                     match message_text {
                         Some(text) => {
+                            if text.starts_with("/"){
+                                if text == "/reset"{
+                                let his_res = write_history_to_file(&History {
+                                    internal: vec![],
+                                    visible: vec![],
+                                });
+                                match his_res{
+                                    Ok(_) =>{
+                                        bot.send_message(chat_id, "History has been reset.").await;
+
+                                    }
+                                    Err(e) => {
+                                        log::error!("{}", e);
+                                    }
+                                }
+                            }
+                            else if text == "/undo"{
+                                let history = history::file::read_json_from_file();
+                                match history{
+                                    Some(mut h) => {
+                                        write_history_to_file(&h.undo());
+                                        bot.send_message(chat_id, format!("undo Sucessful. \n last message: {}", h.last().unwrap_or_default())).await;
+
+                                    }
+                                    None => {
+                                    }
+                                }
+                            }
+                            }else{
                             let res = ai_reply(chat_id, &bot, text, history).await;
                             match res {
                                 Ok(_) => {
@@ -69,6 +98,7 @@ async fn main() {
                                     log::error!("Error: {}", e)
                                 }
                             }
+                        }
                         }
 
                         None => match msg.kind {
