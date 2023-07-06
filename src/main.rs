@@ -364,7 +364,33 @@ async fn ai_reply(
                         }
                     }
                     let res = bot.send_message(chat_id, last_message.to_owned()).await;
+                    let mut hg_config = huggingface_inference_rs::Config::default();
+                    hg_config.key = get_ini_value("huggingface", "token").unwrap();
+                    let hg_client = huggingface_inference_rs::Client::new(hg_config);
+                    //if mood is enabled
+                    if get_ini_value("huggingface", "mood").unwrap() == "true" {
+                    let mood = hg_client.get_emotions(last_message.to_owned()).await;
+                    match mood {
+                        Ok(mood) => {
+                            let highest_scoring_mood = mood
+                                .iter()
+                                .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
 
+                            match highest_scoring_mood {
+                                Some(mood) => {
+                                    log::info!("mood: {:?}", mood);
+                                    bot.send_sticker(
+                                        chat_id,
+                                        InputFile::file(format!("./stickers/{:?}.png", mood.label)),
+                                    )
+                                    .await;
+                                }
+                                None => log::error!("could not get mood")
+                            }
+                        }
+                        Err(e) => {}
+                    }
+                }
                     match res {
                         Ok(_) => {
                             // lets check if tts is enabled
