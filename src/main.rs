@@ -211,8 +211,40 @@ async fn ai_reply(
     chat_config.mode = Mode::Chat;
     chat_config.character = get_ini_value("chat_ai", "character").unwrap();
     chat_config.your_name = get_ini_value("chat_ai", "your_name").unwrap();
-    chat_config.truncation_length = 2048;
+
     chat_config.history = history.clone();
+    chat_config.regenerate = false;
+    chat_config._continue = true;
+    chat_config.stop_at_newline = false;
+    chat_config.chat_prompt_size = 2048;
+    chat_config.chat_generation_attempts = 1;
+    chat_config.chat_instruct_command = "Continue the chat dialogue below. Write a single reply for the character \"Assistant\"\n\n".to_string();
+    chat_config.max_new_tokens = 250;
+    chat_config.do_sample = true;
+    chat_config.temprature = 0.7;
+    chat_config.top_p = 0.1;
+    chat_config.typical_p = 1.0;
+    chat_config.epsilon_cutoff = 0.0;
+    chat_config.eta_cutoff = 0.0;
+    chat_config.tfs = 0;
+    chat_config.top_a = 0;
+    chat_config.repetition_penalty = 1.18;
+    chat_config.top_k = 40;
+    chat_config.min_length = 0;
+    chat_config.no_repeat_ngram_size = 0;
+    chat_config.num_beams = 1;
+    chat_config.penalty_alpha = 0.0;
+    chat_config.length_penalty = 1.0;
+    chat_config.early_stopping = false;
+    chat_config.mirostat_mode = 0;
+    chat_config.mirostat_mode_tau = 5;
+    chat_config.mirostat_mode_eta = 0.1;
+    chat_config.seed = -1;
+    chat_config.add_bos_token = true;
+    chat_config.truncation_length = 2048;
+    chat_config.ban_eos_token = false;
+    chat_config.skip_special_tokens = true;
+    chat_config.stopping_strings = vec![];
 
     // test if user asked for pictures
     if message_parsers::user_asked_for_pictures(message_text)
@@ -386,28 +418,30 @@ async fn ai_reply(
                     let hg_client = huggingface_inference_rs::Client::new(hg_config);
                     //if mood is enabled
                     if get_ini_value("huggingface", "mood").unwrap() == "true" {
-                    let mood = hg_client.get_emotions(last_message.to_owned()).await;
-                    match mood {
-                        Ok(mood) => {
-                            let highest_scoring_mood = mood
-                                .iter()
-                                .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
-
-                            match highest_scoring_mood {
-                                Some(mood) => {
-                                    log::info!("mood: {:?}", mood);
-                                    bot.send_sticker(
-                                        chat_id,
-                                        InputFile::file(format!("./stickers/{:?}.png", mood.label)),
-                                    )
-                                    .await;
+                        let mood = hg_client.get_emotions(last_message.to_owned()).await;
+                        match mood {
+                            Ok(mood) => {
+                                let highest_scoring_mood = mood
+                                    .iter()
+                                    .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
+                                match highest_scoring_mood {
+                                    Some(mood) => {
+                                        log::info!("mood: {:?}", mood);
+                                        bot.send_sticker(
+                                            chat_id,
+                                            InputFile::file(format!(
+                                                "./stickers/{:?}.png",
+                                                mood.label
+                                            )),
+                                        )
+                                        .await;
+                                    }
+                                    None => log::error!("could not get mood"),
                                 }
-                                None => log::error!("could not get mood")
                             }
+                            Err(e) => {}
                         }
-                        Err(e) => {}
                     }
-                }
 
                     match res {
                         Ok(_) => {
