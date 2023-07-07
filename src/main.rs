@@ -443,21 +443,6 @@ async fn ai_reply(
                         }
                     }
 
-                            match highest_scoring_mood {
-                                Some(mood) => {
-                                    log::info!("mood: {:?}", mood);
-                                    bot.send_sticker(
-                                        chat_id,
-                                        InputFile::file(format!("./stickers/{:?}.png", mood.label)),
-                                    )
-                                    .await;
-                                }
-                                None => log::error!("could not get mood")
-                            }
-                        }
-                        Err(e) => {}
-                    }
-                }
                     match res {
                         Ok(_) => {
                             // lets check if tts is enabled
