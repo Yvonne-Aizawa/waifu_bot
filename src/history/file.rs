@@ -1,9 +1,13 @@
 use std::io::Write;
 use std::{fs::File, io::Read};
 
-use crate::ai::chat::History;
+use oobabooga_rs::History;
+
 use crate::config::get_ini_value;
-pub fn write_history_to_file(history: &History) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub fn write_history_to_file(
+    history: &History,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    log::info!("Writing history to file");
     let json_data = serde_json::to_string(&history)?;
     let mut file = File::create(format!(
         "history_{}.json",
@@ -28,6 +32,7 @@ pub fn read_json_from_file() -> Option<History> {
         if let Ok(d) = deserialized_data {
             Some(d)
         } else {
+            log::error!("Error deserializing data");
             Some(History {
                 internal: vec![],
                 visible: vec![],

@@ -6,10 +6,10 @@ mod modules;
 
 use std::{process::exit, sync::Arc};
 
+use oobabooga_rs::{History, Mode};
 use tokio::fs;
 
 use crate::{
-    ai::chat::History,
     config::get_ini_value,
     history::file::write_history_to_file,
     message_parsers::{
@@ -86,6 +86,10 @@ async fn main() {
                                     None => {
                                     }
                                 }
+                            }
+                            else if text == "/sticker"{
+                                let sticker = InputFile::file("/home/yvonne/Documents/GitHub/teloxide/stickers/Embarrasment.png");
+                                bot.send_sticker(chat_id, sticker).await;
                             }
                             }else{
                             let res = ai_reply(chat_id, &bot, text, history).await;
@@ -199,6 +203,49 @@ async fn ai_reply(
     message_text: &str,
     mut history: History,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    //create ai client and config
+    let mut ai_config = oobabooga_rs::Config::default();
+    ai_config.url = get_ini_value("chat_ai", "url").unwrap();
+    let mut ai_client = oobabooga_rs::Client::new(ai_config);
+    let mut chat_config = oobabooga_rs::ChatRequest::default();
+    chat_config.mode = Mode::Chat;
+    chat_config.character = get_ini_value("chat_ai", "character").unwrap();
+    chat_config.your_name = get_ini_value("chat_ai", "your_name").unwrap();
+
+    chat_config.history = history.clone();
+    chat_config.regenerate = false;
+    chat_config._continue = true;
+    chat_config.stop_at_newline = false;
+    chat_config.chat_prompt_size = 2048;
+    chat_config.chat_generation_attempts = 1;
+    chat_config.chat_instruct_command = "Continue the chat dialogue below. Write a single reply for the character \"Assistant\"\n\n".to_string();
+    chat_config.max_new_tokens = 250;
+    chat_config.do_sample = true;
+    chat_config.temprature = 0.7;
+    chat_config.top_p = 0.1;
+    chat_config.typical_p = 1.0;
+    chat_config.epsilon_cutoff = 0.0;
+    chat_config.eta_cutoff = 0.0;
+    chat_config.tfs = 0;
+    chat_config.top_a = 0;
+    chat_config.repetition_penalty = 1.18;
+    chat_config.top_k = 40;
+    chat_config.min_length = 0;
+    chat_config.no_repeat_ngram_size = 0;
+    chat_config.num_beams = 1;
+    chat_config.penalty_alpha = 0.0;
+    chat_config.length_penalty = 1.0;
+    chat_config.early_stopping = false;
+    chat_config.mirostat_mode = 0;
+    chat_config.mirostat_mode_tau = 5;
+    chat_config.mirostat_mode_eta = 0.1;
+    chat_config.seed = -1;
+    chat_config.add_bos_token = true;
+    chat_config.truncation_length = 2048;
+    chat_config.ban_eos_token = false;
+    chat_config.skip_special_tokens = true;
+    chat_config.stopping_strings = vec![];
+
     // test if user asked for pictures
     if message_parsers::user_asked_for_pictures(message_text)
         && get_ini_value("sd_ai", "enabled").unwrap() == "true"
@@ -212,12 +259,12 @@ async fn ai_reply(
             message_text
         );
         log::trace!("{}", msg);
-
-        let response = ai::chat::play_promt(msg.to_string(), history).await;
+        chat_config.user_input = msg.clone();
+        let response = ai_client.get_chat(chat_config).await;
         match response {
             Ok(res) => {
-                history = res.results[0].history.clone();
-                match write_history_to_file(&history) {
+                log::info!("ai replied");
+                match write_history_to_file(&res) {
                     Ok(_) => {
                         log::info!("history written to file")
                     }
@@ -321,7 +368,7 @@ async fn ai_reply(
                                 log::error!("could not get weather");
                             }
                             Some(w) => {
-                               message = format!("{} | this is the weather information you can relay it to the user |  {}", message, w);
+                                message = format!("{} | this is the weather information you can relay it to the user |  {}", message, w);
                             }
                         }
                         log::info!("weather: {:?}", message);
@@ -350,12 +397,14 @@ async fn ai_reply(
         }
 
         log::info!("message: {}", message);
-        let response = ai::chat::play_promt(message.to_string(), history).await;
+        chat_config.user_input = message;
+        let response = ai_client.get_chat(chat_config).await;
+        log::info!("response: {:?}", response);
         //send response
         match response {
-            Ok(response) => match response.results[0].history.clone().last() {
+            Ok(response) => match response.clone().last() {
                 Some(last_message) => {
-                    match write_history_to_file(&response.results[0].history.clone()) {
+                    match write_history_to_file(&response.clone()) {
                         Ok(_) => {
                             log::info!("history written to file")
                         }
@@ -369,12 +418,30 @@ async fn ai_reply(
                     let hg_client = huggingface_inference_rs::Client::new(hg_config);
                     //if mood is enabled
                     if get_ini_value("huggingface", "mood").unwrap() == "true" {
-                    let mood = hg_client.get_emotions(last_message.to_owned()).await;
-                    match mood {
-                        Ok(mood) => {
-                            let highest_scoring_mood = mood
-                                .iter()
-                                .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
+                        let mood = hg_client.get_emotions(last_message.to_owned()).await;
+                        match mood {
+                            Ok(mood) => {
+                                let highest_scoring_mood = mood
+                                    .iter()
+                                    .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
+                                match highest_scoring_mood {
+                                    Some(mood) => {
+                                        log::info!("mood: {:?}", mood);
+                                        bot.send_sticker(
+                                            chat_id,
+                                            InputFile::file(format!(
+                                                "./stickers/{:?}.png",
+                                                mood.label
+                                            )),
+                                        )
+                                        .await;
+                                    }
+                                    None => log::error!("could not get mood"),
+                                }
+                            }
+                            Err(e) => {}
+                        }
+                    }
 
                             match highest_scoring_mood {
                                 Some(mood) => {
@@ -426,20 +493,8 @@ async fn ai_reply(
             Err(e) => {
                 // TODO notify user of error
                 log::error!("{:?}", e);
-                match e {
-                    ai::chat::ApiError::ServerNotUp => {
-                        bot.send_message(chat_id, "ai server not up or configured incorrectly")
-                            .await?;
-                    }
-                    ai::chat::ApiError::SeverStarting => {
-                        bot.send_message(chat_id, "ai server is starting").await?;
-                    }
-                    ai::chat::ApiError::Unknown => {
-                        bot.send_message(chat_id, "unknown error").await?;
-                    }
-                }
 
-                return Err(Box::new(e));
+                return Err(e);
             }
         }
     }
