@@ -3,9 +3,6 @@ mod config;
 mod history;
 mod message_parsers;
 mod modules;
-
-use std::{process::exit, sync::Arc};
-
 use oobabooga_rs::{History, Mode};
 use tokio::fs;
 
@@ -17,7 +14,7 @@ use crate::{
     },
     modules::{
         audio::{extract_audio_from_file, generate_voice},
-        pokeapi::PokemonEx,
+        pokeapi::PokemonEx, database::{send_string_to_server, get_simmilar},
     },
 };
 use dotenv::dotenv;
@@ -201,12 +198,12 @@ async fn ai_reply(
     chat_id: ChatId,
     bot: &Bot,
     message_text: &str,
-    mut history: History,
+    history: History,
 ) -> Result<(), Box<dyn std::error::Error>> {
     //create ai client and config
     let mut ai_config = oobabooga_rs::Config::default();
     ai_config.url = get_ini_value("chat_ai", "url").unwrap();
-    let mut ai_client = oobabooga_rs::Client::new(ai_config);
+    let ai_client = oobabooga_rs::Client::new(ai_config);
     let mut chat_config = oobabooga_rs::ChatRequest::default();
     chat_config.mode = Mode::Chat;
     chat_config.character = get_ini_value("chat_ai", "character").unwrap();
@@ -259,6 +256,8 @@ async fn ai_reply(
             message_text
         );
         log::trace!("{}", msg);
+
+
         chat_config.user_input = msg.clone();
         let response = ai_client.get_chat(chat_config).await;
         match response {
@@ -325,6 +324,18 @@ async fn ai_reply(
         }
     } else {
         let mut message = message_text.to_owned();
+        //find simmilar
+        // let sim_res = get_simmilar(message.clone()).await;
+        // match sim_res{
+        //     Ok(res) => {
+        //         log::info!("message: {} simmilar found {:?} score: {} ",message_text, res.embedding.id, res.score);
+        //         bot.send_message(chat_id, format!("message: {} simmilar found {:?} score: {}, metadata {} ",message_text, res.embedding.id, res.score, res.embedding.metadata.date)).await;
+        //     }
+            
+        //     Err(e) => {
+        //         log::error!("{:?}", e);
+        //     }
+        // }
         // no image was requested
         // TODO implement history
         // TODO implement calendar
@@ -395,11 +406,15 @@ async fn ai_reply(
                 None => {}
             }
         }
+        // let out = send_string_to_server(message.clone()).await;
+
 
         log::info!("message: {}", message);
         chat_config.user_input = message;
+
         let response = ai_client.get_chat(chat_config).await;
         log::info!("response: {:?}", response);
+
         //send response
         match response {
             Ok(response) => match response.clone().last() {
@@ -412,6 +427,8 @@ async fn ai_reply(
                             log::error!("error writing history to file{:?}", e)
                         }
                     }
+                    // let out = send_string_to_server(last_message.clone()).await;
+                    // log::info!("{:?}", out);
                     let res = bot.send_message(chat_id, last_message.to_owned()).await;
                     let mut hg_config = huggingface_inference_rs::Config::default();
                     hg_config.key = get_ini_value("huggingface", "token").unwrap();
