@@ -44,13 +44,13 @@ pub async fn extract_audio_from_file() -> Result<String, ()> {
                 }
                 Err(e) => {
                     log::error!("{:?}", e);
-                    return Err(());
+                    Err(())
                 }
             }
         }
         Err(e) => {
             log::error!("{:?}", e);
-            return Err(());
+            Err(())
         }
     }
 }
@@ -82,16 +82,16 @@ azure:
             log::debug!("{:?}", result);
             let res = std::fs::write(PathBuf::from(r"./out/output.mp3"), result);
             match res {
-                Ok(_) => return Ok(()),
+                Ok(_) => Ok(()),
                 Err(e) => {
                     log::error!("{:?}", e);
-                    return Err(());
+                    Err(())
                 }
             }
         }
         Err(e) => {
             log::error!("{:?}", e);
-            return Err(());
+            Err(())
         }
     }
 }

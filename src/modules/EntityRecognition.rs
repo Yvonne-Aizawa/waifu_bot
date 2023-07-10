@@ -11,20 +11,17 @@ pub async fn recognize(input: String) -> Option<Vec<Entity>> {
 
         let sentences = [input];
 
-        let output = ner_model.predict(&sentences);
-        output
+        
+        ner_model.predict(&sentences)
     });
 
     let res = thread.join();
     match res {
         Ok(o) => {
-            match o.first() {
-                Some(res) => return Some(res.to_vec()),
-                None => return None,
-            };
+            o.first().map(|res| res.to_vec())
         }
         Err(_e) => {
-            return None;
+            None
         }
     }
 }

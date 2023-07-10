@@ -142,20 +142,20 @@ fn is_appointment_on_date(appointment: &Appointment, date: DateTime<Utc>) -> boo
     match repeat_rule.frequency {
         Frequency::Yearly => {
             // Check if the appointment occurs on the specific day of the year
-            return appointment.date.month() == date.month()
-                && appointment.date.day() == date.day();
+            appointment.date.month() == date.month()
+                && appointment.date.day() == date.day()
         }
         Frequency::Monthly => {
             // Check if the appointment occurs on the specific day of the month
-            return appointment.date.day() == date.day();
+            appointment.date.day() == date.day()
         }
         Frequency::Weekly => {
             // Check if the appointment occurs on the specific day of the week
-            return appointment.date.weekday() == date.weekday();
+            appointment.date.weekday() == date.weekday()
         }
         Frequency::Daily => {
             // The appointment occurs every day, so it will always match
-            return true;
+            true
         }
     }
 }
@@ -217,8 +217,7 @@ fn parse_recurring_event(data: &str) -> Option<RecurringEvent> {
         let by_day = captures.name("by_day").map(|m| m.as_str().to_owned());
         let by_month_day = captures
             .name("by_month_day")
-            .map(|m| m.as_str().parse::<u32>().ok())
-            .flatten();
+            .and_then(|m| m.as_str().parse::<u32>().ok());
 
         Some(RecurringEvent {
             frequency,

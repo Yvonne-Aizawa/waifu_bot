@@ -23,14 +23,12 @@ impl PokemonEx for Pokemon {
             .types
             .iter()
             .map(|t| t.type_.clone())
-            .into_iter()
             .map(|t| t.name)
             .collect();
         let abilities: Vec<String> = self
             .abilities
             .iter()
             .map(|t| t.ability.clone())
-            .into_iter()
             .map(|t| t.name)
             .collect();
         // let evolutions: Vec<String> = rustemon::evolution::evolution_chain::get_by_name(&self.name, &rustemon_client).await;
@@ -69,7 +67,7 @@ pub fn find_pokemon(sentence: &str) -> Option<String> {
 }
 fn read_file_into_vec(file_path: &str) -> io::Result<Vec<String>> {
     let path = Path::new(file_path);
-    let file = File::open(&path)?;
+    let file = File::open(path)?;
     let reader = io::BufReader::new(file);
 
     let mut lines = Vec::new();

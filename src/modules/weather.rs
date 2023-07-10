@@ -23,7 +23,7 @@ pub async fn get_weather(city: String) -> Option<String> {
             println!("Error: {}", e);
         }
     };
-    return None;
+    None
 }
 
 fn weather_to_string(weather: openweathermap_client::models::CurrentWeather) -> String {

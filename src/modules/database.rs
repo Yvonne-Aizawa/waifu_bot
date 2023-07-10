@@ -11,15 +11,15 @@ pub async fn send_string_to_server(
     string: String,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let res = vectorize(string.to_string()).await.unwrap();
-    let res = send(string.to_string(), res).await;
-    res
+    
+    send(string.to_string(), res).await
 }
 pub async fn get_simmilar(
     string: String,
 ) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
     let res = vectorize(string.to_string()).await.unwrap();
-    let res = get(res).await;
-    res
+    
+    get(res).await
 }
 pub async fn vectorize(input: String) -> Result<Vec<f32>, RustBertError> {
     let thread = thread::spawn(move || {
@@ -28,15 +28,15 @@ pub async fn vectorize(input: String) -> Result<Vec<f32>, RustBertError> {
 
         let sentences = [input];
 
-        let output = model.encode(&sentences);
-        output
+        
+        model.encode(&sentences)
     });
 
     let res = thread.join().unwrap();
     match res {
-        Ok(res) => return Ok(res[0].clone()),
-        Err(e) => return Err(e),
-    };
+        Ok(res) => Ok(res[0].clone()),
+        Err(e) => Err(e),
+    }
 }
 async fn send(
     id: String,
@@ -97,16 +97,16 @@ async fn get(query: Vec<f32>) -> Result<Response, Box<dyn std::error::Error + Se
         Ok(res) => {
             let first = res.first();
             match first {
-                None => return Err("No results".into()),
+                None => Err("No results".into()),
                 Some(first) => {
-                    return Ok(Response {
+                    Ok(Response {
                         score: first.score,
                         embedding: first.embedding.clone(),
                     })
                 }
             }
         }
-        Err(e) => return Err(e.into()),
+        Err(e) => Err(e.into()),
     }
 }
 

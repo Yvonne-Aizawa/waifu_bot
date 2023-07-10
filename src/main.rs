@@ -57,7 +57,7 @@ async fn main() {
                 if user == &get_ini_value("telegram", "user").unwrap() {
                     match message_text {
                         Some(text) => {
-                            if text.starts_with("/"){
+                            if text.starts_with('/'){
                                 if text == "/reset"{
                                 let his_res = write_history_to_file(&History {
                                     internal: vec![],
@@ -276,7 +276,7 @@ async fn ai_reply(
                     msg = format!("{} {} ", msg, &get_ini_value("sd_ai", "lora").unwrap());
                 }
 
-                let img_res = ai::image::generate_image(format!("{msg}")).await;
+                let img_res = ai::image::generate_image(msg.to_string()).await;
                 match img_res {
                     Ok(_) => {
                         log::info!("photo generated");
@@ -339,14 +339,14 @@ async fn ai_reply(
         // no image was requested
         // TODO implement history
         // TODO implement calendar
-        if is_question_about_appointment(&message_text)
+        if is_question_about_appointment(message_text)
             && get_ini_value("calendar", "enabled").unwrap() == "true"
         {
             log::info!("asked for appointments");
-            message = modules::calendar::parse_query(message.to_string()).to_string();
+            message = modules::calendar::parse_query(message.to_string());
             log::debug!("appointments parsed {}", message);
         }
-        if is_question_about_weather(&message_text) {
+        if is_question_about_weather(message_text) {
             log::info!("asked for weather {}", message_text);
             // let mut config = huggingface_inference_rs::Config::default();
             // config.key = get_ini_value("huggingface", "token").unwrap();
@@ -365,7 +365,7 @@ async fn ai_reply(
                             first_loc.push(entity.word.as_ref());
                         }
                     }
-                    if first_loc.len() == 0 {
+                    if first_loc.is_empty() {
                         for entity in res {
                             if entity.label == "ORG" {
                                 first_loc.push(entity.word.as_ref());
@@ -374,7 +374,7 @@ async fn ai_reply(
                     }
                     // if there is a first location
                     log::info!("first location: {:?}", first_loc);
-                    if first_loc.len() > 0 {
+                    if !first_loc.is_empty() {
                         match modules::weather::get_weather(first_loc[0].to_string()).await {
                             None => {
                                 log::error!("could not get weather");
@@ -393,7 +393,7 @@ async fn ai_reply(
             }
         }
 
-        if is_question_about_pokemon(&message_text) {
+        if is_question_about_pokemon(message_text) {
             match modules::pokeapi::find_pokemon(message_text) {
                 Some(pokemon) => {
                     let res = modules::pokeapi::get_pokemon(&pokemon).await;
