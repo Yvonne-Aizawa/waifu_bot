@@ -1,6 +1,7 @@
 version: '3.3'
 services:
     openai-whisper-asr-webservice:
+        container_name: whisper
         ports:
             - '9000:9000'
         environment:
@@ -8,8 +9,9 @@ services:
             - ASR_ENGINE=openai_whisper
         image: 'onerahmet/openai-whisper-asr-webservice:latest'
     m1guelpf:
+        container_name: tinyvector
         ports:
             - '8000:8000'
         image: 'ghcr.io/m1guelpf/tinyvector:edge'
         volumes:
-            - ./data/tinyvector/:/storage/
+            - ./data/tinyvector/:/tinyvector/storage

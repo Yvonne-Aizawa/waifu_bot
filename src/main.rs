@@ -14,7 +14,7 @@ use crate::{
     },
     modules::{
         audio::{extract_audio_from_file, generate_voice},
-        pokeapi::PokemonEx, database::{send_string_to_server, get_simmilar},
+        pokeapi::PokemonEx, database::{send_string_to_server, get_simmilar}, EntityRecognition
     },
 };
 use dotenv::dotenv;
@@ -348,25 +348,26 @@ async fn ai_reply(
         }
         if is_question_about_weather(&message_text) {
             log::info!("asked for weather {}", message_text);
-            let mut config = huggingface_inference_rs::Config::default();
-            config.key = get_ini_value("huggingface", "token").unwrap();
-            let client = huggingface_inference_rs::Client::new(config);
-            let res = client.get_classifications(message_text.to_owned()).await;
+            // let mut config = huggingface_inference_rs::Config::default();
+            // config.key = get_ini_value("huggingface", "token").unwrap();
+            // let client = huggingface_inference_rs::Client::new(config);
+            // let res = client.get_classifications(message_text.to_owned()).await;
+            let res = EntityRecognition::recognize(message_text.to_owned()).await;
             match &res {
-                Ok(res) => {
+                Some(res) => {
                     let mut first_loc: Vec<&str> = Vec::new();
 
                     // TODO implement weather module
                     // if res contains a LOC entity_group
                     log::info!("res: {:?}", res);
                     for entity in res {
-                        if entity.entity_group == "LOC" {
+                        if entity.label == "LOC" || entity.label == "I-LOC" {
                             first_loc.push(entity.word.as_ref());
                         }
                     }
                     if first_loc.len() == 0 {
                         for entity in res {
-                            if entity.entity_group == "ORG" {
+                            if entity.label == "ORG" {
                                 first_loc.push(entity.word.as_ref());
                             }
                         }
@@ -386,8 +387,8 @@ async fn ai_reply(
                     }
                 }
 
-                Err(e) => {
-                    log::error!("error: {}", e)
+                None => {
+                    log::error!("error: No Place found")
                 }
             }
         }
