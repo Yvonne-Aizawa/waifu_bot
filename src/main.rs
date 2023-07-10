@@ -14,7 +14,8 @@ use crate::{
     },
     modules::{
         audio::{extract_audio_from_file, generate_voice},
-        pokeapi::PokemonEx, database::{send_string_to_server, get_simmilar}, EntityRecognition
+        pokeapi::PokemonEx,
+        EntityRecognition,
     },
 };
 use dotenv::dotenv;
@@ -257,7 +258,6 @@ async fn ai_reply(
         );
         log::trace!("{}", msg);
 
-
         chat_config.user_input = msg.clone();
         let response = ai_client.get_chat(chat_config).await;
         match response {
@@ -331,7 +331,7 @@ async fn ai_reply(
         //         log::info!("message: {} simmilar found {:?} score: {} ",message_text, res.embedding.id, res.score);
         //         bot.send_message(chat_id, format!("message: {} simmilar found {:?} score: {}, metadata {} ",message_text, res.embedding.id, res.score, res.embedding.metadata.date)).await;
         //     }
-            
+
         //     Err(e) => {
         //         log::error!("{:?}", e);
         //     }
@@ -409,7 +409,6 @@ async fn ai_reply(
         }
         // let out = send_string_to_server(message.clone()).await;
 
-
         log::info!("message: {}", message);
         chat_config.user_input = message;
 
@@ -457,7 +456,7 @@ async fn ai_reply(
                                     None => log::error!("could not get mood"),
                                 }
                             }
-                            Err(e) => {}
+                            Err(_e) => {}
                         }
                     }
 

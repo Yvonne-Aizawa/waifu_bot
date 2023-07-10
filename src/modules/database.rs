@@ -7,12 +7,16 @@ use rust_bert::{
 use serde::{Deserialize, Serialize};
 
 use std::thread;
-pub async fn send_string_to_server(string: String) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn send_string_to_server(
+    string: String,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let res = vectorize(string.to_string()).await.unwrap();
-    let res = send(string.to_string(),res).await;
+    let res = send(string.to_string(), res).await;
     res
 }
-pub async fn get_simmilar(string: String) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn get_simmilar(
+    string: String,
+) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
     let res = vectorize(string.to_string()).await.unwrap();
     let res = get(res).await;
     res
@@ -34,15 +38,18 @@ pub async fn vectorize(input: String) -> Result<Vec<f32>, RustBertError> {
         Err(e) => return Err(e),
     };
 }
-async fn send(id: String, vector: Vec<f32>) -> Result<String, Box<dyn std::error::Error + Send + Sync>>  {
+async fn send(
+    id: String,
+    vector: Vec<f32>,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let mut headers = header::HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
-    let inserta = Insert{
+    let inserta = Insert {
         id,
         vector,
-        metadata: MetaData{
+        metadata: MetaData {
             date: DateTime::<Utc>::from(std::time::SystemTime::now()),
-        }
+        },
     };
 
     let client = reqwest::Client::builder()
@@ -57,24 +64,22 @@ async fn send(id: String, vector: Vec<f32>) -> Result<String, Box<dyn std::error
         .await;
     Ok(response.unwrap().text().await.unwrap())
 }
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 
 struct vecResponse {
     score: f32,
-    embedding: vecEmbedding
+    embedding: vecEmbedding,
 }
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 
-struct vecEmbedding{
+struct vecEmbedding {
     id: String,
-    vector: Vec<f32>
+    vector: Vec<f32>,
 }
-async fn get(query: Vec<f32>) -> Result< Response, Box<dyn std::error::Error + Send + Sync>>  {
+async fn get(query: Vec<f32>) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
     let mut headers = header::HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
-    let inserta = getSim{
-        query,
-    };
+    let inserta = getSim { query };
 
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
@@ -86,39 +91,44 @@ async fn get(query: Vec<f32>) -> Result< Response, Box<dyn std::error::Error + S
         .body(inserta.to_string())
         .send()
         .await;
-    let api_response: Result<Vec<Response>, serde_json::Error> = serde_json::from_str(&response?.text().await?);
-    match api_response{
+    let api_response: Result<Vec<Response>, serde_json::Error> =
+        serde_json::from_str(&response?.text().await?);
+    match api_response {
         Ok(res) => {
             let first = res.first();
             match first {
                 None => return Err("No results".into()),
-                Some(first) => return Ok(Response { score: first.score, embedding: first.embedding.clone() })
+                Some(first) => {
+                    return Ok(Response {
+                        score: first.score,
+                        embedding: first.embedding.clone(),
+                    })
+                }
             }
         }
-        Err(e) => return Err(e.into())
+        Err(e) => return Err(e.into()),
     }
 }
 
-#[derive(Serialize,Deserialize)]
-pub struct Insert{
+#[derive(Serialize, Deserialize)]
+pub struct Insert {
     id: String,
     vector: Vec<f32>,
-    metadata: MetaData
+    metadata: MetaData,
 }
-#[derive(Serialize,Deserialize, Clone)]
-pub struct MetaData{
-    pub date: DateTime<Utc>
+#[derive(Serialize, Deserialize, Clone)]
+pub struct MetaData {
+    pub date: DateTime<Utc>,
 }
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 
-pub struct getSim{
+pub struct getSim {
     query: Vec<f32>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Response {
     pub score: f64,
     pub embedding: Embedding,
-
 }
 
 #[derive(Serialize, Deserialize, Clone)]

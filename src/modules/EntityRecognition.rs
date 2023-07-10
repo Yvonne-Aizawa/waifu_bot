@@ -1,7 +1,8 @@
-use std::{thread};
+use std::thread;
 
-use rust_bert::{
-    pipelines::{ner::{NERModel, Entity}, token_classification::TokenClassificationConfig}
+use rust_bert::pipelines::{
+    ner::{Entity, NERModel},
+    token_classification::TokenClassificationConfig,
 };
 use serde::Deserialize;
 pub async fn recognize(input: String) -> Option<Vec<Entity>> {
@@ -22,11 +23,10 @@ pub async fn recognize(input: String) -> Option<Vec<Entity>> {
                 None => return None,
             };
         }
-        Err(e) =>{
+        Err(_e) => {
             return None;
         }
     }
-
 }
 
 #[derive(Deserialize, Debug)]
